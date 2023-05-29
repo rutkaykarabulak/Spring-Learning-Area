@@ -1,40 +1,51 @@
 package com.example.payroll;
 
 import java.util.List;
-import java.util.Optional;
+import java.util.stream.Collectors;
 
-import org.springframework.data.repository.support.Repositories;
+import org.springframework.hateoas.CollectionModel;
+import org.springframework.hateoas.EntityModel;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
+
 
 @RestController
 public class EmployeeController {
     private final EmployeeRepository employeeRepo;
+
+    private final EmployeeModelAssembler assembler;
     
-    EmployeeController(EmployeeRepository repo) {
+    EmployeeController(EmployeeRepository repo, EmployeeModelAssembler assembler) {
         this.employeeRepo = repo;
+        this.assembler = assembler;
     }
 
     // Aggregate root
     // tag::get-aggregate-root[]
     // Returns all the employees in the database
     @GetMapping("/employee")
-    public List<Employee> getEmployees() {
-        return employeeRepo.findAll();
+    public CollectionModel<EntityModel<Employee>> getEmployees() {
+        List<EntityModel<Employee>> employees = employeeRepo.findAll().stream()
+        .map(e -> assembler.toModel(e)).toList();
+
+        return CollectionModel.of(employees, linkTo(methodOn(EmployeeController.class).getEmployees()).withSelfRel());
     }
     // end:: get-aggregate-root
 
     // Gets the employee with given id. Single item.
     @GetMapping("/employee/{id}")
-    public Employee getEmployee(@PathVariable Long id) {
-        return employeeRepo.findById(id)
+    public EntityModel<Employee> getEmployee(@PathVariable Long id) {
+        Employee employee = employeeRepo.findById(id)
         .orElseThrow(() -> new EmployeeNotFoundException(id));
+
+        return assembler.toModel(employee);
     }
 
     @PostMapping("/employee")
@@ -54,11 +65,7 @@ public class EmployeeController {
     }
 
     @DeleteMapping("/employee/{id}")
-    public void deleteEmployee(@PathVariable Long id) {
-        try {
-            employeeRepo.deleteById(id);
-        } catch (EmployeeNotFoundException exception) {
-            throw new EmployeeNotFoundException(id);
-        }
+    public void deleteEmployee(@PathVariable Long id) {    
+        employeeRepo.deleteById(id);
     }
 }
