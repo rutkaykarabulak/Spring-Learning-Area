@@ -1,16 +1,20 @@
 package com.example.payroll;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
+import org.apache.catalina.connector.Response;
+import org.hibernate.engine.spi.EntityEntry;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.IanaLinkRelations;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
@@ -49,23 +53,38 @@ public class EmployeeController {
     }
 
     @PostMapping("/employee")
-    public Employee newEmployee(@RequestBody Employee newEmployee) {
-        return employeeRepo.save(newEmployee);
+    public ResponseEntity<?> newEmployee(@RequestBody Employee employee) {
+        EntityModel<Employee> entityModel = assembler.toModel(employeeRepo.save(employee));
+
+        return ResponseEntity
+        .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri()) //
+        .body(entityModel);
     }
 
     @PutMapping("/employee/{id}")
-    public Employee replaceEmployee(@RequestBody Employee newEmployee, @PathVariable Long id) {
-        Employee employee = employeeRepo.findById(id)
-        .orElseThrow(() -> new EmployeeNotFoundException(id));
+    public ResponseEntity<?> replaceEmployee(@RequestBody Employee newEmployee, @PathVariable Long id) {
+        Employee updatedEmployee = employeeRepo.findById(id)
+        .map(e -> {
+            e.setFirstName(newEmployee.getFirstName());
+            e.setLastName(newEmployee.getLastName());
+            e.setRole(newEmployee.getRole());
+            return employeeRepo.save(e);
+        }) //
+        .orElseGet(() -> {
+            newEmployee.setId(id);
+            return employeeRepo.save(newEmployee);
+        });
 
-        employee.setName(newEmployee.getName());
-        employee.setRole(newEmployee.getRole());
-
-        return employeeRepo.save(employee);
+        EntityModel<Employee> entityModel = assembler.toModel(updatedEmployee);
+        return ResponseEntity
+        .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
+        .body(entityModel);
     }
 
     @DeleteMapping("/employee/{id}")
-    public void deleteEmployee(@PathVariable Long id) {    
+    public ResponseEntity<?> deleteEmployee(@PathVariable Long id) {    
         employeeRepo.deleteById(id);
+
+        return ResponseEntity.noContent().build();
     }
 }
