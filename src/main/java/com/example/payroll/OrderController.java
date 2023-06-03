@@ -2,8 +2,10 @@ package com.example.payroll;
 
 import java.util.List;
 
-
+import org.apache.catalina.connector.Response;
 import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.IanaLinkRelations;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,35 +25,35 @@ public class OrderController {
 
     //#region APIs
     @GetMapping("/order/{id}")
-    public EntityModel<Order> getOrder(@PathVariable Long id) {
+    public ResponseEntity<?> getOrder(@PathVariable Long id) {
         Order order = orderRepository.findById(id)
         .orElseThrow(() -> new OrderNotFoundException(id));
 
         EntityModel<Order> entityModel = 
         assembler.toModel(order);
 
-        return entityModel;
+        return ResponseEntity.ok().body(entityModel);
     }
 
     @GetMapping("/order")
-    public List<EntityModel<Order>> getOrders() {
+    public ResponseEntity<?> getOrders() {
         List<EntityModel<Order>> orders = 
         orderRepository.findAll().stream().map(
             o -> assembler.toModel(o)
         ).toList();
 
-        return orders;
+        return ResponseEntity.ok().body(orders);
     }
 
     @PostMapping("/order")
-    public EntityModel<Order> newOrder(@RequestBody Order newOrder) {
+    public ResponseEntity<EntityModel<Order>> newOrder(@RequestBody Order newOrder) {
         EntityModel<Order> entityModel = assembler.toModel(orderRepository.save(newOrder));
 
-        return entityModel;
+        return ResponseEntity.created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri()).body(entityModel);
     }
 
     @PutMapping("/order/{id}")
-    public EntityModel<Order> updateOrder(@RequestBody Order newOrder, @PathVariable Long id) {
+    public ResponseEntity<?> updateOrder(@RequestBody Order newOrder, @PathVariable Long id) {
         Order updatedOrder = orderRepository.findById(id)
         .map(o -> {
             o.setDescription(newOrder.getDescription());
@@ -63,15 +65,17 @@ public class OrderController {
                 return orderRepository.save(newOrder);
             }
         );
-
+        
         EntityModel<Order> entityModel = assembler.toModel(updatedOrder);
 
-        return entityModel;
+        return ResponseEntity.ok().body(entityModel);
     }
 
     @DeleteMapping("/order/{id}")
-    public void deleteOrder(@PathVariable Long id) {
-        orderRepository.deleteById(id);;
+    public ResponseEntity<?> deleteOrder(@PathVariable Long id) {
+        orderRepository.deleteById(id);
+
+        return ResponseEntity.noContent().build();
     }
 
     //#endregion
