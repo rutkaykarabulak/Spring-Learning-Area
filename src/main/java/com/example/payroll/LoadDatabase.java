@@ -18,7 +18,7 @@ public class LoadDatabase {
             log.info("Preloading " + employeeRepository.save(new Employee("Silan", "Yakut", "Doctor")));
             log.info("Preloading " + employeeRepository.save(new Employee("Rutkay", "Karabulak", "Sex machine")));
             log.info("Preloading " + orderRepository.save((new Order("Philipps AirFryer", OrderStatus.IN_PROGRESS))));
-            log.info("Preloading " + orderRepository.save((new Order("Air Jordan", OrderStatus.CANCELLED))));
+            log.info("Preloading " + orderRepository.save((new Order("Air Jordan", OrderStatus.COMPLETED))));
           };
     }
 
